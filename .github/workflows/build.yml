@@ -10,9 +10,16 @@ jobs:
     - name: Checkout kernel source
       uses: actions/checkout@v4
 
+    - name: Fix CPU Mask Configurations
+      run: |
+        # Pre-inject the required Snapdragon 675 CPU architecture masks to stop the prompt crashes
+        echo 'CONFIG_LITTLE_CPU_MASK="0x3f"' >> arch/arm64/configs/violet_stock_defconfig
+        echo 'CONFIG_BIG_CPU_MASK="0xc0"' >> arch/arm64/configs/violet_stock_defconfig
+
     - name: Set up MemKernel as a module (M-OUT) with specified name
       run: |
-        curl -LSs "https://githubusercontent.com" | bash -s M dogi
+        # Download and inject the driver source code into your kernel workspace using the verified Poko-Apps repo
+        curl -LSs "https://raw.githubusercontent.com/Poko-Apps/MemKernel/main/kernel/setup.sh" | bash -s M dogi
 
     - name: Android kernel build
       uses: lemniskett/android-kernel-actions@master
@@ -24,16 +31,10 @@ jobs:
         compiler: clang/11
         defconfig: violet_stock_defconfig
         image: Image.gz-dtb
-        # This hook runs directly inside the container right before make is called
-        before_compile: |
-          echo 'CONFIG_LITTLE_CPU_MASK="0x3f"' >> arch/arm64/configs/violet_stock_defconfig
-          echo 'CONFIG_BIG_CPU_MASK="0xc0"' >> arch/arm64/configs/violet_stock_defconfig
-          yes "" | make ARCH=arm64 violet_stock_defconfig
 
     - name: Upload Kernel and Module
       uses: actions/upload-artifact@v4
       with:
         name: module
         path: |
-          ${{ steps.build.outputs.outfile }}
           ./out/drivers/memkernel/dogi_memk.ko

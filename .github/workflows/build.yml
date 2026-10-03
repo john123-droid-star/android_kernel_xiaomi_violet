@@ -1,4 +1,3 @@
-
 name: Kernel Build
 
 on:
@@ -23,7 +22,7 @@ jobs:
       with:
         arch: arm64
         compiler: clang/11
-        defconfig: violet_user_defconfig
+        defconfig: violet_stock_defconfig
         image: Image.gz-dtb
 
     - name: Upload Kernel and Module

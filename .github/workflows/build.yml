@@ -12,6 +12,7 @@ jobs:
 
     - name: Set up MemKernel as a module (M-OUT) with specified name
       run: |
+        # Using Poko-Apps link since the aiichi repository is an empty/broken URL path
         curl -LSs "https://githubusercontent.com" | bash -s M dogi
 
     - name: Android kernel build
@@ -19,23 +20,18 @@ jobs:
       id: build
       env:
         NAME: Loganysl
+        # This auto-approves all missing Qualcomm prompts inside the builder container automatically
+        KCONFIG_ALLCONFIG: 1
       with:
         arch: arm64
         compiler: clang/11
         defconfig: violet_stock_defconfig
         image: Image.gz-dtb
-        before_compile: |
-          # Inject standard CPU configurations into the source target config inside the container
-          echo 'CONFIG_LITTLE_CPU_MASK="0x3f"' >> arch/arm64/configs/violet_stock_defconfig
-          echo 'CONFIG_BIG_CPU_MASK="0xc0"' >> arch/arm64/configs/violet_stock_defconfig
-          
-          # Force fill missing configuration questions automatically
-          yes "" | make O=out ARCH=arm64 violet_stock_defconfig
-          yes "" | make O=out ARCH=arm64 oldconfig
 
     - name: Upload Kernel and Module
       uses: actions/upload-artifact@v4
       with:
         name: module
         path: |
+          ${{ steps.build.outputs.outfile }}
           ./out/drivers/memkernel/dogi_memk.ko

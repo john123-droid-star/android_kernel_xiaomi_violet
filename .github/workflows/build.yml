@@ -14,11 +14,16 @@ jobs:
       run: |
         curl -LSs "https://githubusercontent.com" | bash -s M dogi
 
-    - name: Fix Missing CPU Bitmask Defconfig Values
+    - name: Pre-configure and force default prompts
       run: |
-        # Force add the required architecture masks directly into the configuration target
+        # Inject standard CPU configurations into the source target config
         echo 'CONFIG_LITTLE_CPU_MASK="0x3f"' >> arch/arm64/configs/violet_stock_defconfig
         echo 'CONFIG_BIG_CPU_MASK="0xc0"' >> arch/arm64/configs/violet_stock_defconfig
+        
+        # Prepare out directory and force-fill missing Kconfig questions
+        mkdir -p out
+        make O=out ARCH=arm64 violet_stock_defconfig
+        yes "" | make O=out ARCH=arm64 oldconfig
 
     - name: Android kernel build
       uses: lemniskett/android-kernel-actions@master

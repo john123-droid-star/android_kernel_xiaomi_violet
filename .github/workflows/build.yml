@@ -12,13 +12,12 @@ jobs:
 
     - name: Fix CPU Mask Configurations
       run: |
-        # Pre-inject the required Snapdragon 675 CPU architecture masks to stop the prompt crashes
-        echo 'CONFIG_LITTLE_CPU_MASK="0x3f"' >> arch/arm64/configs/violet_stock_defconfig
-        echo 'CONFIG_BIG_CPU_MASK="0xc0"' >> arch/arm64/configs/violet_stock_defconfig
+        # Inject the bitmask variables without string quotes so the config system validates them correctly
+        echo 'CONFIG_LITTLE_CPU_MASK=0x3f' >> arch/arm64/configs/violet_stock_defconfig
+        echo 'CONFIG_BIG_CPU_MASK=0xc0' >> arch/arm64/configs/violet_stock_defconfig
 
     - name: Set up MemKernel as a module (M-OUT) with specified name
       run: |
-        # Download and inject the driver source code into your kernel workspace using the verified Poko-Apps repo
         curl -LSs "https://raw.githubusercontent.com/Poko-Apps/MemKernel/main/kernel/setup.sh" | bash -s M dogi
 
     - name: Android kernel build
@@ -26,6 +25,8 @@ jobs:
       id: build
       env:
         NAME: Loganysl
+        # Force the engine to auto-accept missing Kconfig values inside the container layout
+        KCONFIG_ALLCONFIG: 1
       with:
         arch: arm64
         compiler: clang/11
@@ -37,4 +38,5 @@ jobs:
       with:
         name: module
         path: |
+          ${{ steps.build.outputs.outfile }}
           ./out/drivers/memkernel/dogi_memk.ko

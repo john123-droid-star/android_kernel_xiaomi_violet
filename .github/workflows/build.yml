@@ -10,11 +10,15 @@ jobs:
     - name: Checkout kernel source
       uses: actions/checkout@v4
 
+    - name: Fix git ownership
+      run: git config --global --add safe.directory /github/workspace
+
     - name: Create Global Config Overlay File
       run: |
-        # Write the required CPU masks directly to a root overlay file that Kconfig cannot wipe
         echo 'CONFIG_LITTLE_CPU_MASK="0x3f"' > all.config
         echo 'CONFIG_BIG_CPU_MASK="0xc0"' >> all.config
+        # Also place it in the kernel directory to ensure it's found
+        cp all.config .config
 
     - name: Set up MemKernel as a module (M-OUT) with specified name
       run: |
@@ -25,7 +29,6 @@ jobs:
       id: build
       env:
         NAME: Loganysl
-        # This forces the build engine to merge the overlay settings during configuration
         KCONFIG_ALLCONFIG: all.config
       with:
         arch: arm64

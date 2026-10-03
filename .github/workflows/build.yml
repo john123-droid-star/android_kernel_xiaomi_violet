@@ -7,39 +7,46 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout kernel source
-      uses: actions/checkout@v4
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
 
-    - name: Fix git ownership
-      run: git config --global --add safe.directory /github/workspace
+      - name: Fix git ownership
+        run: git config --global --add safe.directory /github/workspace
 
-    - name: Create Global Config Overlay File
-      run: |
-        echo 'CONFIG_LITTLE_CPU_MASK="0x3f"' > all.config
-        echo 'CONFIG_BIG_CPU_MASK="0xc0"' >> all.config
-        # Also place it in the kernel directory to ensure it's found
-        cp all.config .config
+      - name: Prepare kernel config
+        run: |
+          set -eux
 
-    - name: Set up MemKernel as a module (M-OUT) with specified name
-      run: |
-        curl -LSs "https://raw.githubusercontent.com/Poko-Apps/MemKernel/main/kernel/setup.sh" | bash -s M dogi
+          # Start from the stock kernel defconfig
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- violet_stock_defconfig
 
-    - name: Android kernel build
-      uses: lemniskett/android-kernel-actions@master
-      id: build
-      env:
-        NAME: Loganysl
-        KCONFIG_ALLCONFIG: all.config
-      with:
-        arch: arm64
-        compiler: clang/11
-        defconfig: violet_stock_defconfig
-        image: Image.gz-dtb
+          # Add custom CPU mask config values
+          echo 'CONFIG_LITTLE_CPU_MASK="0x3f"' >> .config
+          echo 'CONFIG_BIG_CPU_MASK="0xc0"' >> .config
 
-    - name: Upload Kernel and Module
-      uses: actions/upload-artifact@v4
-      with:
-        name: module
-        path: |
-          ${{ steps.build.outputs.outfile }}
-          ./out/drivers/memkernel/dogi_memk.ko
+          # Resolve dependent config entries without interactive prompts
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
+
+      - name: Set up MemKernel as a module (M-OUT) with specified name
+        run: |
+          curl -LSs "https://raw.githubusercontent.com/Poko-Apps/MemKernel/main/kernel/setup.sh" | bash -s M dogi
+
+      - name: Android kernel build
+        uses: lemniskett/android-kernel-actions@master
+        id: build
+        env:
+          NAME: Loganysl
+          KCONFIG_ALLCONFIG: .config
+        with:
+          arch: arm64
+          compiler: clang/11
+          defconfig: violet_stock_defconfig
+          image: Image.gz-dtb
+
+      - name: Upload Kernel and Module
+        uses: actions/upload-artifact@v4
+        with:
+          name: module
+          path: |
+            ${{ steps.build.outputs.outfile }}
+            ./out/drivers/memkernel/dogi_memk.ko
